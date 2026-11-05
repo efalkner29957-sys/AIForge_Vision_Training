@@ -606,33 +606,28 @@
       clearPrediction();
     }
 
-    function getVector(embedding) {
-      const vector = embedding.floatEmbedding;
-      return vector instanceof Float32Array ? vector : Float32Array.from(vector);
-    }
-
     function updatePrediction(liveEmbedding) {
       if (classes.some((item) => item.examples.length === 0)) {
         clearPrediction();
         return;
       }
 
-      const liveVector = getVector(liveEmbedding);
       const neighbors = [];
       for (const item of classes) {
         for (const example of item.examples) {
           neighbors.push({
             classIndex: classes.indexOf(item),
-            similarity: ImageEmbedder.cosineSimilarity(liveVector, getVector(example))
+            similarity: ImageEmbedder.cosineSimilarity(liveEmbedding, example)
           });
         }
       }
 
       neighbors.sort((a, b) => b.similarity - a.similarity);
       const nearest = neighbors.slice(0, 5);
+      const neighborCount = nearest.length;
       const votes = classes.map((_, index) => nearest.filter((neighbor) => neighbor.classIndex === index).length);
       const winnerIndex = votes.indexOf(Math.max(...votes));
-      const winnerConfidence = votes[winnerIndex] / 5;
+      const winnerConfidence = votes[winnerIndex] / neighborCount;
 
       if (winnerConfidence >= 0.6) {
         predictionName.textContent = classes[winnerIndex].name;
@@ -645,7 +640,7 @@
       }
 
       classes.forEach((item, index) => {
-        const percent = Math.round(votes[index] / 5 * 100);
+        const percent = Math.round(votes[index] / neighborCount * 100);
         item.bar.style.width = `${percent}%`;
         item.percent.textContent = `${percent}%`;
         item.track.setAttribute("aria-valuenow", String(percent));
