@@ -1,0 +1,630 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10131b">
+  <title>Teach the Machine</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #10131b;
+      color: #f4f6fb;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+      --muted: #9da6b8;
+      --panel: #191e29;
+      --border: #2a3241;
+      --accent: #9b8cff;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-width: 320px;
+      min-height: 100vh;
+      margin: 0;
+      background:
+        radial-gradient(ellipse at 50% -15%, rgba(119, 98, 255, .16), transparent 50%),
+        #10131b;
+    }
+
+    button, input { font: inherit; }
+
+    .app {
+      width: min(1120px, 100%);
+      margin: 0 auto;
+      padding: 44px 28px 56px;
+    }
+
+    header { margin-bottom: 30px; }
+
+    .eyebrow {
+      margin: 0 0 9px;
+      color: #b4aaff;
+      font-size: .75rem;
+      font-weight: 750;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      letter-spacing: -.055em;
+      line-height: 1.05;
+    }
+
+    .intro {
+      max-width: 620px;
+      margin: 13px 0 0;
+      color: var(--muted);
+      font-size: 1rem;
+      line-height: 1.6;
+    }
+
+    .status {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin: 0 0 20px;
+      padding: 12px 15px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: rgba(25, 30, 41, .82);
+      color: #cbd2df;
+      font-size: .9rem;
+      line-height: 1.45;
+    }
+
+    .status-dot {
+      flex: 0 0 auto;
+      width: 9px;
+      height: 9px;
+      margin-top: 4px;
+      border-radius: 50%;
+      background: #f1bd62;
+      box-shadow: 0 0 12px rgba(241, 189, 98, .4);
+    }
+
+    .status[data-state="ready"] .status-dot {
+      background: #54d6a0;
+      box-shadow: 0 0 12px rgba(84, 214, 160, .4);
+    }
+
+    .status[data-state="error"] .status-dot {
+      background: #ff777e;
+      box-shadow: 0 0 12px rgba(255, 119, 126, .4);
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(300px, .9fr);
+      gap: 20px;
+      align-items: start;
+    }
+
+    .panel {
+      min-width: 0;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: rgba(25, 30, 41, .88);
+      box-shadow: 0 18px 50px rgba(0, 0, 0, .18);
+    }
+
+    .panel-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: -.01em;
+    }
+
+    .live-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: #d3dae7;
+      font-size: .75rem;
+      font-weight: 650;
+    }
+
+    .live-badge::before {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #ff777e;
+      content: "";
+    }
+
+    .video-wrap {
+      position: relative;
+      display: grid;
+      min-height: 260px;
+      aspect-ratio: 4 / 3;
+      place-items: center;
+      overflow: hidden;
+      background:
+        radial-gradient(ellipse at center, rgba(55, 62, 79, .58), transparent 65%),
+        #11151e;
+    }
+
+    video {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1);
+    }
+
+    .video-placeholder {
+      position: absolute;
+      padding: 24px;
+      color: #818b9f;
+      font-size: .9rem;
+      text-align: center;
+    }
+
+    .video-wrap.has-video .video-placeholder { display: none; }
+
+    .camera-note {
+      padding: 13px 20px 16px;
+      color: var(--muted);
+      font-size: .82rem;
+      line-height: 1.5;
+    }
+
+    .prediction {
+      padding: 23px 22px 20px;
+      border-bottom: 1px solid var(--border);
+      text-align: center;
+    }
+
+    .prediction-label {
+      margin: 0 0 9px;
+      color: var(--muted);
+      font-size: .76rem;
+      font-weight: 700;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+    }
+
+    .prediction-name {
+      overflow-wrap: anywhere;
+      margin: 0;
+      font-size: clamp(1.7rem, 3.8vw, 2.45rem);
+      letter-spacing: -.045em;
+      line-height: 1.1;
+    }
+
+    .prediction-confidence {
+      margin: 8px 0 0;
+      color: #b9afff;
+      font-size: 1rem;
+      font-weight: 700;
+    }
+
+    .class-list { padding: 4px 20px 20px; }
+
+    .class-card {
+      padding: 17px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .class-card:last-child { border-bottom: 0; }
+
+    .class-topline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .class-name-display {
+      overflow: hidden;
+      font-size: .92rem;
+      font-weight: 700;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .class-percent {
+      flex: 0 0 auto;
+      color: #d2d8e4;
+      font-size: .84rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .bar-track {
+      height: 8px;
+      overflow: hidden;
+      border-radius: 20px;
+      background: #2b3240;
+    }
+
+    .bar-fill {
+      width: 0;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--class-color);
+      transition: width 160ms ease;
+    }
+
+    .class-input {
+      width: 100%;
+      margin-top: 14px;
+      padding: 10px 12px;
+      border: 1px solid #343d4d;
+      border-radius: 9px;
+      outline: none;
+      background: #141923;
+      color: #f4f6fb;
+      font-size: .88rem;
+    }
+
+    .class-input:focus {
+      border-color: #9281ff;
+      box-shadow: 0 0 0 3px rgba(146, 129, 255, .16);
+    }
+
+    .train-button {
+      display: flex;
+      width: 100%;
+      min-height: 45px;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 9px;
+      padding: 10px 12px;
+      border: 0;
+      border-radius: 9px;
+      background: var(--class-color);
+      color: #11131a;
+      cursor: pointer;
+      font-size: .88rem;
+      font-weight: 750;
+      touch-action: none;
+      transition: filter 120ms ease, transform 120ms ease, opacity 120ms ease;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .train-button:hover:not(:disabled) { filter: brightness(1.08); }
+    .train-button:active:not(:disabled) { transform: scale(.985); }
+
+    .train-button:disabled {
+      cursor: not-allowed;
+      opacity: .48;
+    }
+
+    .train-button.is-training {
+      filter: brightness(1.16);
+      box-shadow: 0 0 0 3px rgba(255, 255, 255, .12);
+    }
+
+    .count {
+      margin: 9px 0 0;
+      color: var(--muted);
+      font-size: .77rem;
+      text-align: center;
+    }
+
+    @media (max-width: 760px) {
+      .app { padding: 34px 18px 42px; }
+      .workspace { grid-template-columns: 1fr; }
+      .video-wrap { min-height: 220px; }
+    }
+
+    @media (max-width: 420px) {
+      .app { padding: 28px 14px 34px; }
+      .panel-heading { padding: 15px 16px; }
+      .class-list { padding-right: 16px; padding-left: 16px; }
+      .prediction { padding-right: 16px; padding-left: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <p class="eyebrow">A tiny machine-learning lab</p>
+      <h1>Teach the Machine</h1>
+      <p class="intro">Show the camera what each class looks like. Hold a training button, then try it out and watch the machine make its best guess.</p>
+    </header>
+
+    <div class="status" id="status" role="status" aria-live="polite" data-state="loading">
+      <span class="status-dot" aria-hidden="true"></span>
+      <span id="status-message">Loading the AI model...</span>
+    </div>
+
+    <section class="workspace" aria-label="Training and live prediction">
+      <section class="panel" aria-labelledby="camera-heading">
+        <div class="panel-heading">
+          <h2 id="camera-heading">Live camera</h2>
+          <span class="live-badge">LIVE</span>
+        </div>
+        <div class="video-wrap" id="video-wrap">
+          <video id="video" autoplay muted playsinline aria-label="Mirrored live webcam video"></video>
+          <div class="video-placeholder">Your camera preview will appear here.</div>
+        </div>
+        <div class="camera-note">Hold a class button while showing the camera something to learn. For privacy, examples stay in this page and are not uploaded.</div>
+      </section>
+
+      <section class="panel" aria-labelledby="prediction-heading">
+        <div class="panel-heading">
+          <h2 id="prediction-heading">Machine's guess</h2>
+        </div>
+        <div class="prediction" aria-live="polite">
+          <p class="prediction-label">I think this is</p>
+          <p class="prediction-name" id="prediction-name">Waiting for examples</p>
+          <p class="prediction-confidence" id="prediction-confidence">Train both classes to begin</p>
+        </div>
+        <div class="class-list" id="class-list"></div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    window.addEventListener("error", (event) => {
+      if (!(event.target instanceof HTMLScriptElement) || event.target.type !== "module") return;
+      const status = document.querySelector("#status");
+      document.querySelector("#status-message").textContent =
+        "The AI model library couldn't load. Check your internet connection and reload the page.";
+      status.dataset.state = "error";
+    }, true);
+  </script>
+  <script type="module" id="app-module">
+    import { FilesetResolver, ImageEmbedder } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.2/vision_bundle.mjs";
+
+    const video = document.querySelector("#video");
+    const videoWrap = document.querySelector("#video-wrap");
+    const status = document.querySelector("#status");
+    const statusMessage = document.querySelector("#status-message");
+    const predictionName = document.querySelector("#prediction-name");
+    const predictionConfidence = document.querySelector("#prediction-confidence");
+    const classList = document.querySelector("#class-list");
+    const classes = [
+      { name: "Thumbs Up", color: "#b4a2ff", examples: [], button: null, input: null, count: null, bar: null, percent: null, training: false },
+      { name: "Thumbs Down", color: "#65d9c0", examples: [], button: null, input: null, count: null, bar: null, percent: null, training: false }
+    ];
+
+    let embedder = null;
+    let modelReady = false;
+    let cameraReady = false;
+    let modelError = false;
+    let cameraError = false;
+    let lastTimestamp = -1;
+    let lastCaptureAt = 0;
+    let frameErrorShown = false;
+
+    function setStatus(message, state) {
+      statusMessage.textContent = message;
+      status.dataset.state = state;
+    }
+
+    function updateStatus() {
+      if (modelError) {
+        setStatus("The AI model couldn't load. Check your internet connection and reload the page.", "error");
+      } else if (cameraError) {
+        setStatus("Camera access is blocked or unavailable. Allow camera access and open this page on localhost or HTTPS.", "error");
+      } else if (!modelReady) {
+        setStatus("Loading the AI model...", "loading");
+      } else if (!cameraReady) {
+        setStatus("AI model loaded. Waiting for camera access...", "loading");
+      } else {
+        setStatus("Ready.", "ready");
+      }
+
+      for (const item of classes) {
+        item.button.disabled = !modelReady || !cameraReady;
+      }
+    }
+
+    function renderClasses() {
+      classList.replaceChildren();
+
+      classes.forEach((item, index) => {
+        const card = document.createElement("div");
+        card.className = "class-card";
+        card.style.setProperty("--class-color", item.color);
+
+        const topline = document.createElement("div");
+        topline.className = "class-topline";
+
+        const name = document.createElement("span");
+        name.className = "class-name-display";
+        name.textContent = item.name;
+
+        const percent = document.createElement("span");
+        percent.className = "class-percent";
+        percent.textContent = "0%";
+
+        const track = document.createElement("div");
+        track.className = "bar-track";
+        track.setAttribute("role", "progressbar");
+        track.setAttribute("aria-label", `${item.name} confidence`);
+        track.setAttribute("aria-valuemin", "0");
+        track.setAttribute("aria-valuemax", "100");
+        track.setAttribute("aria-valuenow", "0");
+
+        const bar = document.createElement("div");
+        bar.className = "bar-fill";
+        track.append(bar);
+
+        const input = document.createElement("input");
+        input.className = "class-input";
+        input.type = "text";
+        input.maxLength = 32;
+        input.value = item.name;
+        input.setAttribute("aria-label", `Name for class ${index + 1}`);
+        input.addEventListener("input", () => {
+          item.name = input.value.trim() || `Class ${index + 1}`;
+          name.textContent = item.name;
+          track.setAttribute("aria-label", `${item.name} confidence`);
+          renderCounts();
+        });
+
+        const button = document.createElement("button");
+        button.className = "train-button";
+        button.type = "button";
+        button.textContent = "Hold to train";
+        button.disabled = true;
+        button.addEventListener("pointerdown", (event) => {
+          if (button.disabled || event.button !== 0 && event.pointerType === "mouse") return;
+          event.preventDefault();
+          button.setPointerCapture(event.pointerId);
+          item.training = true;
+          button.classList.add("is-training");
+          button.textContent = "Training... release to stop";
+        });
+        const stopTraining = () => {
+          item.training = false;
+          button.classList.remove("is-training");
+          button.textContent = "Hold to train";
+        };
+        button.addEventListener("pointerup", stopTraining);
+        button.addEventListener("pointercancel", stopTraining);
+        button.addEventListener("lostpointercapture", stopTraining);
+
+        const count = document.createElement("p");
+        count.className = "count";
+
+        topline.append(name, percent);
+        card.append(topline, track, input, button, count);
+        classList.append(card);
+
+        Object.assign(item, { button, input, count, bar, percent, nameElement: name, track });
+      });
+
+      updateStatus();
+      renderCounts();
+    }
+
+    function renderCounts() {
+      for (const item of classes) {
+        item.count.textContent = `${item.examples.length} / 200 examples`;
+        item.nameElement.textContent = item.name;
+        item.input.setAttribute("aria-label", `Name for ${item.name}`);
+      }
+    }
+
+    function getVector(embedding) {
+      const vector = embedding.floatEmbedding;
+      return vector instanceof Float32Array ? vector : Float32Array.from(vector);
+    }
+
+    function updatePrediction(liveEmbedding) {
+      if (classes.some((item) => item.examples.length === 0)) return;
+
+      const liveVector = getVector(liveEmbedding);
+      const neighbors = [];
+      for (const item of classes) {
+        for (const example of item.examples) {
+          neighbors.push({
+            classIndex: classes.indexOf(item),
+            similarity: ImageEmbedder.cosineSimilarity(liveVector, getVector(example))
+          });
+        }
+      }
+
+      neighbors.sort((a, b) => b.similarity - a.similarity);
+      const nearest = neighbors.slice(0, 5);
+      const votes = classes.map((_, index) => nearest.filter((neighbor) => neighbor.classIndex === index).length);
+      const winnerIndex = votes[0] >= votes[1] ? 0 : 1;
+
+      predictionName.textContent = classes[winnerIndex].name;
+      predictionConfidence.textContent = `${Math.round(votes[winnerIndex] / 5 * 100)}% confidence`;
+
+      classes.forEach((item, index) => {
+        const percent = Math.round(votes[index] / 5 * 100);
+        item.bar.style.width = `${percent}%`;
+        item.percent.textContent = `${percent}%`;
+        item.track.setAttribute("aria-valuenow", String(percent));
+      });
+    }
+
+    function animationFrame() {
+      if (embedder && video.readyState >= 2 && !frameErrorShown) {
+        try {
+          const now = performance.now();
+          const timestamp = now > lastTimestamp ? now : lastTimestamp + 1;
+          lastTimestamp = timestamp;
+
+          const result = embedder.embedForVideo(video, timestamp);
+          const embedding = result.embeddings[0];
+          const captureTime = performance.now();
+
+          if (classes.some((item) => item.training) && captureTime - lastCaptureAt >= 120) {
+            for (const item of classes) {
+              if (item.training && item.examples.length < 200) {
+                item.examples.push(embedding);
+              }
+            }
+            lastCaptureAt = captureTime;
+            renderCounts();
+          }
+
+          updatePrediction(embedding);
+        } catch (error) {
+          console.error("Could not process a camera frame:", error);
+          frameErrorShown = true;
+          setStatus("The camera frame couldn't be processed. Reload the page and try again.", "error");
+        }
+      }
+
+      requestAnimationFrame(animationFrame);
+    }
+
+    async function startCamera() {
+      try {
+        if (!navigator.mediaDevices?.getUserMedia) {
+          throw new Error("Camera access requires a supported browser and a secure page.");
+        }
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
+        video.srcObject = stream;
+        await video.play();
+        cameraReady = true;
+        videoWrap.classList.add("has-video");
+      } catch (error) {
+        console.error("Could not start the camera:", error);
+        cameraError = true;
+      }
+      updateStatus();
+    }
+
+    async function loadModel() {
+      try {
+        const vision = await FilesetResolver.forVisionTasks(
+          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.2/wasm"
+        );
+        embedder = await ImageEmbedder.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath: "https://storage.googleapis.com/mediapipe-models/image_embedder/mobilenet_v3_small/float32/1/mobilenet_v3_small.tflite"
+          },
+          runningMode: "VIDEO"
+        });
+        modelReady = true;
+      } catch (error) {
+        console.error("Could not load the AI model:", error);
+        modelError = true;
+      }
+      updateStatus();
+    }
+
+    renderClasses();
+    requestAnimationFrame(animationFrame);
+    void startCamera();
+    void loadModel();
+  </script>
+</body>
+</html>
