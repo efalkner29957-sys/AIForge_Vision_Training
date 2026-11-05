@@ -123,6 +123,39 @@
       border-bottom: 1px solid var(--border);
     }
 
+    .class-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .action-button {
+      min-height: 36px;
+      padding: 7px 11px;
+      border: 1px solid #3a4354;
+      border-radius: 9px;
+      background: #222938;
+      color: #e7eaf2;
+      cursor: pointer;
+      font-size: .79rem;
+      font-weight: 700;
+    }
+
+    .action-button:hover:not(:disabled) { background: #2b3344; }
+
+    .action-button:disabled {
+      cursor: not-allowed;
+      opacity: .45;
+    }
+
+    .action-button.primary {
+      border-color: #9281ff;
+      background: #9281ff;
+      color: #151321;
+    }
+
+    .action-button.primary:hover:not(:disabled) { background: #a395ff; }
+
     h2 {
       margin: 0;
       font-size: 1rem;
@@ -205,6 +238,7 @@
       font-size: clamp(1.7rem, 3.8vw, 2.45rem);
       letter-spacing: -.045em;
       line-height: 1.1;
+      transition: color 160ms ease;
     }
 
     .prediction-confidence {
@@ -363,6 +397,10 @@
       <section class="panel" aria-labelledby="prediction-heading">
         <div class="panel-heading">
           <h2 id="prediction-heading">Machine's guess</h2>
+          <div class="class-actions">
+            <button class="action-button" id="reset-button" type="button" disabled>Reset</button>
+            <button class="action-button primary" id="add-class-button" type="button">+ Add class</button>
+          </div>
         </div>
         <div class="prediction" aria-live="polite">
           <p class="prediction-label">I think this is</p>
@@ -393,9 +431,12 @@
     const predictionName = document.querySelector("#prediction-name");
     const predictionConfidence = document.querySelector("#prediction-confidence");
     const classList = document.querySelector("#class-list");
+    const resetButton = document.querySelector("#reset-button");
+    const addClassButton = document.querySelector("#add-class-button");
+    const classColors = ["#b4a2ff", "#65d9c0", "#ffae70", "#ff7f9d", "#73b8ff", "#e7d76b"];
     const classes = [
-      { name: "Thumbs Up", color: "#b4a2ff", examples: [], button: null, input: null, count: null, bar: null, percent: null, training: false },
-      { name: "Thumbs Down", color: "#65d9c0", examples: [], button: null, input: null, count: null, bar: null, percent: null, training: false }
+      { name: "Thumbs Up", color: classColors[0], examples: [], button: null, input: null, count: null, bar: null, percent: null, training: false },
+      { name: "Thumbs Down", color: classColors[1], examples: [], button: null, input: null, count: null, bar: null, percent: null, training: false }
     ];
 
     let embedder = null;
@@ -427,6 +468,21 @@
 
       for (const item of classes) {
         item.button.disabled = !modelReady || !cameraReady;
+      }
+    }
+
+    function clearPrediction() {
+      const allClassesTrained = classes.every((item) => item.examples.length > 0);
+      predictionName.textContent = allClassesTrained ? "Not sure..." : "Waiting for examples";
+      predictionName.style.color = "";
+      predictionConfidence.textContent = allClassesTrained
+        ? "Top match below 60% confidence"
+        : "Train every class to begin";
+
+      for (const item of classes) {
+        item.bar.style.width = "0%";
+        item.percent.textContent = "0%";
+        item.track.setAttribute("aria-valuenow", "0");
       }
     }
 
@@ -508,6 +564,7 @@
 
       updateStatus();
       renderCounts();
+      clearPrediction();
     }
 
     function renderCounts() {
@@ -516,6 +573,37 @@
         item.nameElement.textContent = item.name;
         item.input.setAttribute("aria-label", `Name for ${item.name}`);
       }
+      resetButton.disabled = !classes.some((item) => item.examples.length > 0);
+      addClassButton.disabled = classes.length >= 6;
+      addClassButton.textContent = classes.length >= 6 ? "6 classes max" : "+ Add class";
+    }
+
+    function addClass() {
+      if (classes.length >= 6) return;
+      const index = classes.length;
+      classes.push({
+        name: `Class ${index + 1}`,
+        color: classColors[index],
+        examples: [],
+        button: null,
+        input: null,
+        count: null,
+        bar: null,
+        percent: null,
+        training: false
+      });
+      renderClasses();
+    }
+
+    function resetTraining() {
+      for (const item of classes) {
+        item.examples = [];
+        item.training = false;
+        item.button.classList.remove("is-training");
+        item.button.textContent = "Hold to train";
+      }
+      renderCounts();
+      clearPrediction();
     }
 
     function getVector(embedding) {
@@ -524,7 +612,10 @@
     }
 
     function updatePrediction(liveEmbedding) {
-      if (classes.some((item) => item.examples.length === 0)) return;
+      if (classes.some((item) => item.examples.length === 0)) {
+        clearPrediction();
+        return;
+      }
 
       const liveVector = getVector(liveEmbedding);
       const neighbors = [];
@@ -540,10 +631,18 @@
       neighbors.sort((a, b) => b.similarity - a.similarity);
       const nearest = neighbors.slice(0, 5);
       const votes = classes.map((_, index) => nearest.filter((neighbor) => neighbor.classIndex === index).length);
-      const winnerIndex = votes[0] >= votes[1] ? 0 : 1;
+      const winnerIndex = votes.indexOf(Math.max(...votes));
+      const winnerConfidence = votes[winnerIndex] / 5;
 
-      predictionName.textContent = classes[winnerIndex].name;
-      predictionConfidence.textContent = `${Math.round(votes[winnerIndex] / 5 * 100)}% confidence`;
+      if (winnerConfidence >= 0.6) {
+        predictionName.textContent = classes[winnerIndex].name;
+        predictionName.style.color = classes[winnerIndex].color;
+        predictionConfidence.textContent = `${Math.round(winnerConfidence * 100)}% confidence`;
+      } else {
+        predictionName.textContent = "Not sure...";
+        predictionName.style.color = "";
+        predictionConfidence.textContent = `${Math.round(winnerConfidence * 100)}% top match confidence`;
+      }
 
       classes.forEach((item, index) => {
         const percent = Math.round(votes[index] / 5 * 100);
@@ -621,6 +720,8 @@
       updateStatus();
     }
 
+    addClassButton.addEventListener("click", addClass);
+    resetButton.addEventListener("click", resetTraining);
     renderClasses();
     requestAnimationFrame(animationFrame);
     void startCamera();
